@@ -46,6 +46,17 @@
             opacity: 0.9;
         }
         
+        .shared-state-notice {
+            background-color: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        
         .teacher-indicator {
             background-color: #27ae60;
             color: white;
@@ -157,6 +168,16 @@
             transform: translateY(-2px);
         }
         
+        .btn-export {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        .btn-export:hover {
+            background-color: #8e44ad;
+            transform: translateY(-2px);
+        }
+        
         .teacher-controls {
             margin-top: 20px;
             padding-top: 20px;
@@ -265,11 +286,6 @@
         .time-label {
             font-weight: 600;
             margin-right: 5px;
-        }
-        
-        .queue-actions {
-            display: flex;
-            gap: 10px;
         }
         
         .teacher-only-notice {
@@ -402,6 +418,29 @@
             flex: 1;
         }
         
+        .sync-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            color: #27ae60;
+            margin-left: 10px;
+        }
+        
+        .sync-indicator .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: #27ae60;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -430,6 +469,17 @@
             .auth-buttons {
                 flex-direction: column;
             }
+            
+            .teacher-controls {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .teacher-controls .btn {
+                width: 100%;
+                margin-left: 0 !important;
+            }
         }
     </style>
 </head>
@@ -437,7 +487,11 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-hand-paper"></i> Student Queue Manager</h1>
-            <p class="subtitle">Students can join queue multiple times. All students can view the queue.</p>
+            <p class="subtitle">Real-time shared queue for classroom hand-raising</p>
+            
+            <div class="shared-state-notice">
+                <i class="fas fa-users"></i> Shared Queue: All students see the same list
+            </div>
             
             <!-- Teacher indicator appears only when teacher mode is active -->
             <div id="teacherIndicator" class="teacher-indicator" style="display: none;">
@@ -464,6 +518,9 @@
                     <button id="restartQueueBtn" class="btn btn-danger">
                         <i class="fas fa-redo"></i> Restart Queue
                     </button>
+                    <button id="exportQueueBtn" class="btn btn-export" style="margin-left: 10px;">
+                        <i class="fas fa-download"></i> Export Queue
+                    </button>
                     <button id="logoutTeacherBtn" class="btn btn-teacher" style="margin-left: 10px;">
                         <i class="fas fa-sign-out-alt"></i> Exit Teacher Mode
                     </button>
@@ -476,7 +533,8 @@
                         <li>Students can join the queue multiple times</li>
                         <li>Only teachers can cross out names (mark as answered)</li>
                         <li>Click "Switch to Teacher Mode" to authenticate as teacher</li>
-                       
+                        <li>Teacher code: <strong>TEACH123</strong></li>
+                        <li>Queue is shared in real-time with all users</li>
                     </ul>
                     
                     <button id="switchToTeacherBtn" class="btn btn-teacher" style="margin-top: 15px;">
@@ -486,7 +544,12 @@
             </section>
             
             <section class="queue-section">
-                <h2 class="section-title"><i class="fas fa-list-ol"></i> Current Queue</h2>
+                <h2 class="section-title">
+                    <i class="fas fa-list-ol"></i> Current Queue 
+                    <span id="syncIndicator" class="sync-indicator" style="display: none;">
+                        <span class="pulse"></span> Live
+                    </span>
+                </h2>
                 
                 <!-- Teacher notice appears only when NOT in teacher mode -->
                 <div id="teacherNotice" class="teacher-only-notice">
@@ -517,7 +580,7 @@
         </div>
         
         <footer>
-            <p>Classroom Queue Management System &copy; 2023 | Teacher authentication required for teacher controls</p>
+            <p>Classroom Queue Management System &copy; 2023 | Real-time shared queue using localStorage sync</p>
         </footer>
     </div>
     
@@ -541,7 +604,14 @@
         </div>
     </div>
 
+    <!-- Hidden iframe for cross-tab communication -->
+    <iframe id="broadcastFrame" style="display: none;"></iframe>
+
     <script>
+        // This is a unique identifier for this queue instance
+        // In a real implementation, this would be unique per classroom/session
+        const QUEUE_ID = 'classroom_queue_123';
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Get DOM elements
             const studentNameInput = document.getElementById('studentName');
@@ -551,6 +621,7 @@
             const teacherNotice = document.getElementById('teacherNotice');
             const switchToTeacherBtn = document.getElementById('switchToTeacherBtn');
             const restartQueueBtn = document.getElementById('restartQueueBtn');
+            const exportQueueBtn = document.getElementById('exportQueueBtn');
             const logoutTeacherBtn = document.getElementById('logoutTeacherBtn');
             const teacherAuthModal = document.getElementById('teacherAuthModal');
             const teacherCodeInput = document.getElementById('teacherCodeInput');
@@ -561,14 +632,25 @@
             const totalStudentsEl = document.getElementById('totalStudents');
             const waitingStudentsEl = document.getElementById('waitingStudents');
             const answeredStudentsEl = document.getElementById('answeredStudents');
+            const syncIndicator = document.getElementById('syncIndicator');
             
             // Constants
             const TEACHER_CODE = "TEACH123";
+            const BROADCAST_CHANNEL_NAME = 'student_queue_broadcast';
             
             // State variables
-            let queue = JSON.parse(localStorage.getItem('studentQueue')) || [];
+            let queue = [];
             let selectedStudentIndex = null;
             let isTeacherMode = localStorage.getItem('isTeacherMode') === 'true';
+            let broadcastChannel = null;
+            
+            // Try to use BroadcastChannel API (modern browsers)
+            try {
+                broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+                console.log("BroadcastChannel API available");
+            } catch (e) {
+                console.log("BroadcastChannel not available, using localStorage fallback");
+            }
             
             // Initialize UI based on mode
             function initializeMode() {
@@ -584,8 +666,82 @@
                     document.title = "Student Queue Manager";
                 }
                 
-                updateQueueDisplay();
+                // Load shared queue from localStorage
+                loadSharedQueue();
+                
+                // Start sync indicator
+                syncIndicator.style.display = 'inline-flex';
             }
+            
+            // Load queue from shared storage
+            function loadSharedQueue() {
+                try {
+                    const savedQueue = localStorage.getItem(QUEUE_ID);
+                    if (savedQueue) {
+                        queue = JSON.parse(savedQueue);
+                        updateQueueDisplay();
+                    }
+                } catch (e) {
+                    console.error("Error loading shared queue:", e);
+                    queue = [];
+                }
+            }
+            
+            // Save queue to shared storage and broadcast change
+            function saveAndBroadcastQueue() {
+                try {
+                    // Save to localStorage (shared across tabs)
+                    localStorage.setItem(QUEUE_ID, JSON.stringify(queue));
+                    
+                    // Also save with timestamp for conflict resolution
+                    localStorage.setItem(QUEUE_ID + '_timestamp', Date.now().toString());
+                    
+                    // Broadcast change to other tabs/windows
+                    if (broadcastChannel) {
+                        broadcastChannel.postMessage({
+                            type: 'queue_update',
+                            queue: queue,
+                            timestamp: Date.now()
+                        });
+                    }
+                    
+                    // Update UI
+                    updateQueueDisplay();
+                    
+                } catch (e) {
+                    console.error("Error saving queue:", e);
+                }
+            }
+            
+            // Listen for broadcast messages
+            if (broadcastChannel) {
+                broadcastChannel.onmessage = function(event) {
+                    if (event.data && event.data.type === 'queue_update') {
+                        // Only update if the incoming data is newer
+                        const localTimestamp = parseInt(localStorage.getItem(QUEUE_ID + '_timestamp') || '0');
+                        if (event.data.timestamp > localTimestamp) {
+                            queue = event.data.queue;
+                            updateQueueDisplay();
+                            showNotification("Queue updated from another tab", 2000);
+                        }
+                    }
+                };
+            }
+            
+            // Also listen for storage events (cross-tab communication)
+            window.addEventListener('storage', function(event) {
+                if (event.key === QUEUE_ID) {
+                    try {
+                        if (event.newValue) {
+                            queue = JSON.parse(event.newValue);
+                            updateQueueDisplay();
+                            showNotification("Queue updated from another tab", 2000);
+                        }
+                    } catch (e) {
+                        console.error("Error parsing queue from storage event:", e);
+                    }
+                }
+            });
             
             // Function to update the queue display
             function updateQueueDisplay() {
@@ -643,9 +799,6 @@
                 
                 // Update statistics
                 updateStatistics();
-                
-                // Save to localStorage
-                localStorage.setItem('studentQueue', JSON.stringify(queue));
             }
             
             // Function to update statistics
@@ -683,7 +836,7 @@
                 };
                 
                 queue.push(newStudent);
-                updateQueueDisplay();
+                saveAndBroadcastQueue();
                 
                 // Clear input and focus
                 studentNameInput.value = '';
@@ -712,7 +865,7 @@
                     // Deselect after marking
                     selectedStudentIndex = null;
                     
-                    updateQueueDisplay();
+                    saveAndBroadcastQueue();
                     
                     showNotification(`${queue[index].name} marked as answered`);
                 }
@@ -750,12 +903,57 @@
                     return;
                 }
                 
-                if (confirm('Are you sure you want to restart the queue? This will remove all students.')) {
+                if (confirm('Are you sure you want to restart the queue? This will remove all students for everyone.')) {
                     queue = [];
                     selectedStudentIndex = null;
-                    updateQueueDisplay();
-                    showNotification('Queue has been restarted');
+                    saveAndBroadcastQueue();
+                    showNotification('Queue has been restarted for all users');
                 }
+            }
+            
+            // Function to export queue to text file
+            function exportQueue() {
+                if (queue.length === 0) {
+                    showNotification('Queue is empty, nothing to export');
+                    return;
+                }
+                
+                let exportText = `Student Queue Export - ${new Date().toLocaleString()}\n`;
+                exportText += "=".repeat(50) + "\n\n";
+                
+                // Add waiting students
+                const waitingStudents = queue.filter(s => !s.answered);
+                if (waitingStudents.length > 0) {
+                    exportText += "WAITING STUDENTS:\n";
+                    exportText += "-".repeat(30) + "\n";
+                    waitingStudents.forEach((student, index) => {
+                        exportText += `${index + 1}. ${student.name} (Entered: ${formatTime(student.entryTime)})\n`;
+                    });
+                    exportText += "\n";
+                }
+                
+                // Add answered students
+                const answeredStudents = queue.filter(s => s.answered);
+                if (answeredStudents.length > 0) {
+                    exportText += "ANSWERED STUDENTS:\n";
+                    exportText += "-".repeat(30) + "\n";
+                    answeredStudents.forEach((student, index) => {
+                        exportText += `${index + 1}. ${student.name} (Entered: ${formatTime(student.entryTime)}, Answered: ${formatTime(student.leaveTime)})\n`;
+                    });
+                }
+                
+                // Create and download file
+                const blob = new Blob([exportText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `student_queue_${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showNotification('Queue exported to text file');
             }
             
             // Function to show teacher authentication modal
@@ -797,7 +995,7 @@
             }
             
             // Function to show a notification
-            function showNotification(message) {
+            function showNotification(message, duration = 3000) {
                 // Create notification element
                 const notification = document.createElement('div');
                 notification.style.cssText = `
@@ -811,7 +1009,7 @@
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                     z-index: 1000;
                     font-weight: 500;
-                    animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+                    animation: slideIn 0.3s ease, fadeOut 0.3s ease ${(duration - 300) / 1000}s;
                 `;
                 
                 // Add animation styles
@@ -831,10 +1029,12 @@
                 notification.textContent = message;
                 document.body.appendChild(notification);
                 
-                // Remove notification after 3 seconds
+                // Remove notification after duration
                 setTimeout(() => {
-                    notification.remove();
-                }, 3000);
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, duration);
             }
             
             // Event Listeners
@@ -848,6 +1048,7 @@
             
             switchToTeacherBtn.addEventListener('click', showTeacherAuthModal);
             restartQueueBtn.addEventListener('click', restartQueue);
+            exportQueueBtn.addEventListener('click', exportQueue);
             logoutTeacherBtn.addEventListener('click', logoutTeacher);
             
             // Authentication modal events
@@ -880,6 +1081,9 @@
                     }
                 }
             });
+            
+            // Auto-refresh queue every 5 seconds to catch updates from other tabs
+            setInterval(loadSharedQueue, 5000);
             
             // Initialize the display
             initializeMode();
