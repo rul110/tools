@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Hand-Raising Queue</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .teacher-indicator {
+            background-color: #27ae60;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .input-section, .queue-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            color: #4b6cb7;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: #4b6cb7;
+            outline: none;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: #4b6cb7;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #3a5ca9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-teacher {
+            background-color: #27ae60;
+            color: white;
+        }
+        
+        .btn-teacher:hover {
+            background-color: #219653;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .teacher-controls {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .queue-container {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .queue-list {
+            list-style-type: none;
+        }
+        
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 5px solid #4b6cb7;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .queue-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .queue-item.answered {
+            border-left-color: #27ae60;
+            background-color: #f0fff4;
+        }
+        
+        .queue-item.selected {
+            box-shadow: 0 0 0 3px #4b6cb7;
+            transform: translateX(5px);
+        }
+        
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+        
+        .queue-number {
+            background-color: #4b6cb7;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .queue-item.answered .queue-number {
+            background-color: #27ae60;
+        }
+        
+        .student-details {
+            flex: 1;
+        }
+        
+        .student-name {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .queue-item.answered .student-name {
+            text-decoration: line-through;
+            color: #777;
+        }
+        
+        .time-info {
+            display: flex;
+            gap: 20px;
+            font-size: 0.85rem;
+        }
+        
+        .time-entry {
+            color: #4b6cb7;
+        }
+        
+        .queue-item.answered .time-entry {
+            color: #777;
+        }
+        
+        .time-leave {
+            color: #27ae60;
+            display: none;
+        }
+        
+        .queue-item.answered .time-leave {
+            display: block;
+        }
+        
+        .time-label {
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        
+        .queue-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .teacher-only-notice {
+            color: #777;
+            font-size: 0.85rem;
+            font-style: italic;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .empty-queue {
+            text-align: center;
+            padding: 40px 20px;
+            color: #777;
+        }
+        
+        .empty-queue i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-box {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4b6cb7;
+        }
+        
+        .stat-label {
+            color: #777;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #777;
+            font-size: 0.9rem;
+        }
+        
+        .instructions {
+            background-color: #fff9e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #f1c40f;
+        }
+        
+        .instructions h3 {
+            color: #d35400;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
+        }
+        
+        .teacher-auth-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .teacher-auth-modal.show {
+            display: flex;
+        }
+        
+        .auth-modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .auth-modal-content h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .auth-buttons .btn {
+            flex: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .time-info {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .queue-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .auth-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-hand-paper"></i> Student Queue Manager</h1>
+            <p class="subtitle">Students can join queue multiple times. All students can view the queue.</p>
+            
+            <!-- Teacher indicator appears only when teacher mode is active -->
+            <div id="teacherIndicator" class="teacher-indicator" style="display: none;">
+                <i class="fas fa-chalkboard-teacher"></i> Teacher Mode Active
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <section class="input-section">
+                <h2 class="section-title"><i class="fas fa-user-plus"></i> Add Student to Queue</h2>
+                <div class="input-group">
+                    <label for="studentName">Student Name</label>
+                    <input type="text" id="studentName" placeholder="Enter student name">
+                </div>
+                <button id="addBtn" class="btn btn-primary">
+                    <i class="fas fa-plus-circle"></i> Add to Queue
+                </button>
+                
+                <!-- Teacher controls (only visible in teacher mode) -->
+                <div id="teacherControls" class="teacher-controls" style="display: none;">
+                    <h3 class="section-title" style="font-size: 1.2rem; border-bottom: none;">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher Controls
+                    </h3>
+                    <button id="restartQueueBtn" class="btn btn-danger">
+                        <i class="fas fa-redo"></i> Restart Queue
+                    </button>
+                    <button id="logoutTeacherBtn" class="btn btn-teacher" style="margin-left: 10px;">
+                        <i class="fas fa-sign-out-alt"></i> Exit Teacher Mode
+                    </button>
+                </div>
+                
+                <div class="instructions">
+                    <h3><i class="fas fa-info-circle"></i> How to use:</h3>
+                    <ul>
+                        <li>Any student can add their name to the queue</li>
+                        <li>Students can join the queue multiple times</li>
+                        <li>Only teachers can cross out names (mark as answered)</li>
+                        <li>Click "Switch to Teacher Mode" to authenticate as teacher</li>
+                        <li>Teacher code: <strong>TEACH123</strong></li>
+                    </ul>
+                    
+                    <button id="switchToTeacherBtn" class="btn btn-teacher" style="margin-top: 15px;">
+                        <i class="fas fa-chalkboard-teacher"></i> Switch to Teacher Mode
+                    </button>
+                </div>
+            </section>
+            
+            <section class="queue-section">
+                <h2 class="section-title"><i class="fas fa-list-ol"></i> Current Queue</h2>
+                
+                <!-- Teacher notice appears only when NOT in teacher mode -->
+                <div id="teacherNotice" class="teacher-only-notice">
+                    <i class="fas fa-lock"></i> Only teachers can mark students as answered
+                </div>
+                
+                <div class="queue-container">
+                    <ul id="queueList" class="queue-list">
+                        <!-- Queue items will be added here dynamically -->
+                    </ul>
+                </div>
+            </section>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="totalStudents">0</div>
+                <div class="stat-label">Total Students</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="waitingStudents">0</div>
+                <div class="stat-label">Waiting</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="answeredStudents">0</div>
+                <div class="stat-label">Answered</div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Classroom Queue Management System &copy; 2023 | Teacher authentication required for teacher controls</p>
+        </footer>
+    </div>
+    
+    <!-- Teacher Authentication Modal -->
+    <div id="teacherAuthModal" class="teacher-auth-modal">
+        <div class="auth-modal-content">
+            <h2><i class="fas fa-chalkboard-teacher"></i> Teacher Authentication</h2>
+            <div class="input-group">
+                <label for="teacherCodeInput">Enter Teacher Code</label>
+                <input type="password" id="teacherCodeInput" placeholder="Enter teacher code">
+                <div id="authError" class="error-message">Incorrect code. Please try again.</div>
+            </div>
+            <div class="auth-buttons">
+                <button id="authSubmitBtn" class="btn btn-teacher">
+                    <i class="fas fa-key"></i> Authenticate
+                </button>
+                <button id="authCancelBtn" class="btn btn-primary">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get DOM elements
+            const studentNameInput = document.getElementById('studentName');
+            const addBtn = document.getElementById('addBtn');
+            const teacherIndicator = document.getElementById('teacherIndicator');
+            const teacherControls = document.getElementById('teacherControls');
+            const teacherNotice = document.getElementById('teacherNotice');
+            const switchToTeacherBtn = document.getElementById('switchToTeacherBtn');
+            const restartQueueBtn = document.getElementById('restartQueueBtn');
+            const logoutTeacherBtn = document.getElementById('logoutTeacherBtn');
+            const teacherAuthModal = document.getElementById('teacherAuthModal');
+            const teacherCodeInput = document.getElementById('teacherCodeInput');
+            const authSubmitBtn = document.getElementById('authSubmitBtn');
+            const authCancelBtn = document.getElementById('authCancelBtn');
+            const authError = document.getElementById('authError');
+            const queueList = document.getElementById('queueList');
+            const totalStudentsEl = document.getElementById('totalStudents');
+            const waitingStudentsEl = document.getElementById('waitingStudents');
+            const answeredStudentsEl = document.getElementById('answeredStudents');
+            
+            // Constants
+            const TEACHER_CODE = "TEACH123";
+            
+            // State variables
+            let queue = JSON.parse(localStorage.getItem('studentQueue')) || [];
+            let selectedStudentIndex = null;
+            let isTeacherMode = localStorage.getItem('isTeacherMode') === 'true';
+            
+            // Initialize UI based on mode
+            function initializeMode() {
+                if (isTeacherMode) {
+                    teacherIndicator.style.display = 'inline-block';
+                    teacherControls.style.display = 'block';
+                    teacherNotice.style.display = 'none';
+                    document.title = "Student Queue Manager (Teacher Mode)";
+                } else {
+                    teacherIndicator.style.display = 'none';
+                    teacherControls.style.display = 'none';
+                    teacherNotice.style.display = 'block';
+                    document.title = "Student Queue Manager";
+                }
+                
+                updateQueueDisplay();
+            }
+            
+            // Function to update the queue display
+            function updateQueueDisplay() {
+                // Clear the current list
+                queueList.innerHTML = '';
+                
+                if (queue.length === 0) {
+                    // Show empty message if queue is empty
+                    queueList.innerHTML = `
+                        <div class="empty-queue">
+                            <i class="fas fa-users-slash"></i>
+                            <h3>Queue is Empty</h3>
+                            <p>No students have raised their hands yet.</p>
+                        </div>
+                    `;
+                } else {
+                    // Add each student to the queue display
+                    queue.forEach((student, index) => {
+                        const queueItem = document.createElement('li');
+                        queueItem.className = `queue-item ${student.answered ? 'answered' : ''} ${index === selectedStudentIndex ? 'selected' : ''}`;
+                        queueItem.dataset.index = index;
+                        
+                        // Only make clickable in teacher mode for unanswered students
+                        if (isTeacherMode && !student.answered) {
+                            queueItem.style.cursor = 'pointer';
+                            queueItem.title = 'Click to select for marking as answered';
+                        } else {
+                            queueItem.style.cursor = 'default';
+                        }
+                        
+                        queueItem.innerHTML = `
+                            <div class="student-info">
+                                <div class="queue-number">${index + 1}</div>
+                                <div class="student-details">
+                                    <div class="student-name">${student.name}</div>
+                                    <div class="time-info">
+                                        <div class="time-entry">
+                                            <span class="time-label">Entered:</span>
+                                            <span class="entry-time">${formatTime(student.entryTime)}</span>
+                                        </div>
+                                        ${student.answered ? 
+                                            `<div class="time-leave">
+                                                <span class="time-label">Answered:</span>
+                                                <span class="leave-time">${formatTime(student.leaveTime)}</span>
+                                            </div>` 
+                                            : ''
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        queueList.appendChild(queueItem);
+                    });
+                }
+                
+                // Update statistics
+                updateStatistics();
+                
+                // Save to localStorage
+                localStorage.setItem('studentQueue', JSON.stringify(queue));
+            }
+            
+            // Function to update statistics
+            function updateStatistics() {
+                const total = queue.length;
+                const answered = queue.filter(student => student.answered).length;
+                const waiting = total - answered;
+                
+                totalStudentsEl.textContent = total;
+                answeredStudentsEl.textContent = answered;
+                waitingStudentsEl.textContent = waiting;
+            }
+            
+            // Function to format timestamp
+            function formatTime(timestamp) {
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            }
+            
+            // Function to add a student to the queue
+            function addStudent() {
+                const name = studentNameInput.value.trim();
+                
+                if (!name) {
+                    alert('Please enter a student name');
+                    studentNameInput.focus();
+                    return;
+                }
+                
+                // Add student to queue (allowing multiple entries)
+                const newStudent = {
+                    name: name,
+                    entryTime: Date.now(),
+                    answered: false
+                };
+                
+                queue.push(newStudent);
+                updateQueueDisplay();
+                
+                // Clear input and focus
+                studentNameInput.value = '';
+                studentNameInput.focus();
+                
+                // Show confirmation
+                showNotification(`${name} has been added to the queue`);
+            }
+            
+            // Function to mark a student as answered (teacher only)
+            function markAsAnswered(index) {
+                if (!isTeacherMode) {
+                    showNotification('Teacher mode required to mark students as answered');
+                    return;
+                }
+                
+                if (index >= 0 && index < queue.length) {
+                    if (queue[index].answered) {
+                        showNotification('This student has already been marked as answered');
+                        return;
+                    }
+                    
+                    queue[index].answered = true;
+                    queue[index].leaveTime = Date.now();
+                    
+                    // Deselect after marking
+                    selectedStudentIndex = null;
+                    
+                    updateQueueDisplay();
+                    
+                    showNotification(`${queue[index].name} marked as answered`);
+                }
+            }
+            
+            // Function to select a student (teacher mode only)
+            function selectStudent(index) {
+                if (!isTeacherMode) return;
+                
+                if (index >= 0 && index < queue.length) {
+                    // Don't allow selection of already answered students
+                    if (queue[index].answered) {
+                        showNotification('This student has already been answered');
+                        return;
+                    }
+                    
+                    // Toggle selection - if already selected, mark as answered
+                    if (selectedStudentIndex === index) {
+                        markAsAnswered(index);
+                    } else {
+                        // Select new student
+                        selectedStudentIndex = index;
+                        updateQueueDisplay();
+                        showNotification(`Selected: ${queue[index].name}. Click again to mark as answered.`);
+                    }
+                }
+            }
+            
+            // Function to restart the queue (teacher only)
+            function restartQueue() {
+                if (!isTeacherMode) return;
+                
+                if (queue.length === 0) {
+                    showNotification('Queue is already empty');
+                    return;
+                }
+                
+                if (confirm('Are you sure you want to restart the queue? This will remove all students.')) {
+                    queue = [];
+                    selectedStudentIndex = null;
+                    updateQueueDisplay();
+                    showNotification('Queue has been restarted');
+                }
+            }
+            
+            // Function to show teacher authentication modal
+            function showTeacherAuthModal() {
+                teacherAuthModal.classList.add('show');
+                teacherCodeInput.value = '';
+                authError.style.display = 'none';
+                teacherCodeInput.focus();
+            }
+            
+            // Function to hide teacher authentication modal
+            function hideTeacherAuthModal() {
+                teacherAuthModal.classList.remove('show');
+            }
+            
+            // Function to authenticate teacher
+            function authenticateTeacher() {
+                const code = teacherCodeInput.value.trim();
+                
+                if (code === TEACHER_CODE) {
+                    isTeacherMode = true;
+                    localStorage.setItem('isTeacherMode', 'true');
+                    hideTeacherAuthModal();
+                    initializeMode();
+                    showNotification('Teacher authentication successful! Teacher mode activated.');
+                } else {
+                    authError.style.display = 'block';
+                    teacherCodeInput.focus();
+                }
+            }
+            
+            // Function to logout from teacher mode
+            function logoutTeacher() {
+                isTeacherMode = false;
+                localStorage.setItem('isTeacherMode', 'false');
+                selectedStudentIndex = null;
+                initializeMode();
+                showNotification('Exited teacher mode');
+            }
+            
+            // Function to show a notification
+            function showNotification(message) {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background-color: ${isTeacherMode ? '#27ae60' : '#4b6cb7'};
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    z-index: 1000;
+                    font-weight: 500;
+                    animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+                `;
+                
+                // Add animation styles
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                    @keyframes fadeOut {
+                        from { opacity: 1; }
+                        to { opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                // Remove notification after 3 seconds
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            // Event Listeners
+            addBtn.addEventListener('click', addStudent);
+            
+            studentNameInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addStudent();
+                }
+            });
+            
+            switchToTeacherBtn.addEventListener('click', showTeacherAuthModal);
+            restartQueueBtn.addEventListener('click', restartQueue);
+            logoutTeacherBtn.addEventListener('click', logoutTeacher);
+            
+            // Authentication modal events
+            authSubmitBtn.addEventListener('click', authenticateTeacher);
+            authCancelBtn.addEventListener('click', hideTeacherAuthModal);
+            
+            teacherCodeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    authenticateTeacher();
+                }
+            });
+            
+            // Use event delegation for selecting students
+            queueList.addEventListener('click', function(e) {
+                const queueItem = e.target.closest('.queue-item');
+                if (queueItem) {
+                    const index = parseInt(queueItem.dataset.index);
+                    selectStudent(index);
+                }
+            });
+            
+            // Keyboard shortcut for teacher mode: Ctrl+Click to mark as answered
+            queueList.addEventListener('mousedown', function(e) {
+                if (e.ctrlKey && isTeacherMode) {
+                    const queueItem = e.target.closest('.queue-item');
+                    if (queueItem) {
+                        e.preventDefault();
+                        const index = parseInt(queueItem.dataset.index);
+                        markAsAnswered(index);
+                    }
+                }
+            });
+            
+            // Initialize the display
+            initializeMode();
+            
+            // Focus on input on load
+            studentNameInput.focus();
+        });
+    </script>
+</body>
+</html>
